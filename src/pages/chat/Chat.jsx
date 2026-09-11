@@ -43,7 +43,7 @@ export const Chat = () => {
   }, [user?.uid, selectedUser?.uid]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top,_#f8fafc_0%,_#f1f5f9_42%,_#eef2ff_100%)] text-slate-800">
+    <div className="flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#f8fafc_0%,#f1f5f9_42%,#eef2ff_100%)] text-slate-800">
       {/* Header */}
       <ChatHeader />
 
