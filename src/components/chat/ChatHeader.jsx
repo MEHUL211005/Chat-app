@@ -47,7 +47,7 @@ export const ChatHeader = () => {
         {/* App Name */}
         <div className="min-w-0">
           <h1 className="text-lg font-bold text-slate-900 sm:text-xl">
-            Chat App
+            TalkSpace
           </h1>
 
           <p className="hidden text-xs text-slate-500 sm:block">
