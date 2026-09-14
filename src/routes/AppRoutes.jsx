@@ -4,8 +4,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "../pages/auth/Login";
 import Signup from "../pages/auth/Signup";
 import Chat from "../pages/chat/Chat";
-
+import VerifyEmail from "../pages/auth/VerifyEmail";
 import ProtectedRoute from "./ProtectedRoute";
+import VerifiedRoute from "./VerifiedRoute";
 import PublicRoute from "./PublicRoute";
 
 export const AppRoutes = () => {
@@ -30,16 +31,24 @@ export const AppRoutes = () => {
             </PublicRoute>
           }
         />
-
-        {/* Protected Routes */}
         <Route
-          path="/"
+          path="/verify-email"
           element={
             <ProtectedRoute>
-              <Chat />
+              <VerifyEmail />
             </ProtectedRoute>
           }
         />
+
+        {/* Protected Routes */}
+       <Route
+  path="/"
+  element={
+    <VerifiedRoute>
+      <Chat />
+    </VerifiedRoute>
+  }
+/>
       </Routes>
     </BrowserRouter>
   );

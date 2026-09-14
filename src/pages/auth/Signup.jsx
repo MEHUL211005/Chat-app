@@ -81,9 +81,9 @@ export const Signup = () => {
 
       await createUserProfile(user, formData.name);
 
-      toast.success("Account created successfully!");
+      toast.success("Verification email sent. Please check your inbox.");
 
-      navigate("/");
+      navigate("/verify-email");
     } catch (error) {
       console.error(error);
 

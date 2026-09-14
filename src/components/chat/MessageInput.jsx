@@ -1,19 +1,31 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 
 import { useAuth } from "../../context/AuthContext";
 import { sendMessage } from "../../services/chatService";
 
-export const MessageInput = ({ chatId, disabled = false }) => {
+export const MessageInput = ({
+  chatId,
+  disabled = false,
+  value = "",
+  onChange,
+  onClear,
+}) => {
   const { user } = useAuth();
+  const inputRef = useRef(null);
 
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!disabled && !loading) {
+      inputRef.current?.focus();
+    }
+  }, [disabled, loading, chatId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const trimmedMessage = message.trim();
+    const trimmedMessage = value.trim();
 
     if (!trimmedMessage || !chatId || !user?.uid || loading) {
       return;
@@ -28,7 +40,10 @@ export const MessageInput = ({ chatId, disabled = false }) => {
         trimmedMessage,
       );
 
-      setMessage("");
+      onClear?.();
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
     } catch (error) {
       console.error(error);
 
@@ -39,7 +54,7 @@ export const MessageInput = ({ chatId, disabled = false }) => {
   };
 
   const isDisabled =
-    disabled || loading || !message.trim();
+    disabled || loading || !value.trim();
 
   return (
     <div className="shrink-0 border-t border-slate-200 bg-white/90 p-3 sm:p-4">
@@ -50,8 +65,9 @@ export const MessageInput = ({ chatId, disabled = false }) => {
         <div className="min-w-0 flex-1">
           <input
             type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            ref={inputRef}
+            value={value}
+            onChange={(e) => onChange?.(e.target.value)}
             disabled={disabled || loading}
             placeholder={
               disabled
@@ -65,7 +81,7 @@ export const MessageInput = ({ chatId, disabled = false }) => {
         <button
           type="submit"
           disabled={isDisabled}
-          className="shrink-0 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-300 disabled:opacity-80 sm:px-5"
+          className="shrink-0 cursor-pointer rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-300 disabled:opacity-80 sm:px-5"
         >
           {loading ? "Sending..." : "Send"}
         </button>

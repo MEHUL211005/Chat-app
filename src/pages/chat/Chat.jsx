@@ -16,6 +16,16 @@ export const Chat = () => {
   const [selectedChat, setSelectedChat] = useState(null);
   const [chatLoading, setChatLoading] = useState(false);
 
+  const handleSelectUser = (userItem) => {
+    setSelectedUser((prev) => {
+      if (prev?.uid === userItem?.uid) {
+        return prev;
+      }
+
+      return userItem;
+    });
+  };
+
   useEffect(() => {
     const openChat = async () => {
       if (!user?.uid || !selectedUser?.uid) {
@@ -51,7 +61,7 @@ export const Chat = () => {
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         {/* Sidebar */}
         <ChatSidebar
-          onSelectUser={setSelectedUser}
+          onSelectUser={handleSelectUser}
           selectedUser={selectedUser}
         />
 

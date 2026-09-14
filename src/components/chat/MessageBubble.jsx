@@ -16,18 +16,22 @@ export const MessageBubble = ({ message }) => {
 
   return (
     <div
-      className={`flex ${
+      className={`flex min-w-0 ${
         isOwnMessage ? "justify-end" : "justify-start"
       }`}
     >
       <div
-        className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm sm:max-w-[70%] ${
+        className={`min-w-0 max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm sm:max-w-[70%] ${
           isOwnMessage
             ? "rounded-br-md bg-indigo-600 text-white"
             : "rounded-bl-md border border-slate-200 bg-white text-slate-700"
         }`}
+        style={{ overflowWrap: "anywhere" }}
       >
-        <p className="break-words leading-6">
+        <p
+          className="min-w-0 break-all leading-6"
+          style={{ overflowWrap: "anywhere" }}
+        >
           {message.text}
         </p>
 

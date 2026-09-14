@@ -42,3 +42,10 @@ textarea {
 ::selection {
   background: rgba(79, 70, 229, 0.15);
 }
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}

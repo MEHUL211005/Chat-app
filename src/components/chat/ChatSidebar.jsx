@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import { useAuth } from "../../context/AuthContext";
@@ -7,10 +7,73 @@ import { subscribeToUserChats } from "../../services/chatService";
 
 import ChatSidebarItem from "./ChatSidebarItem";
 
-export const ChatSidebar = ({
-  onSelectUser,
-  selectedUser,
-}) => {
+const areChatsEqual = (prevChats, nextChats) => {
+  if (prevChats.length !== nextChats.length) {
+    return false;
+  }
+
+  return prevChats.every((chat, index) => {
+    const nextChat = nextChats[index];
+
+    if (!nextChat || chat.id !== nextChat.id) {
+      return false;
+    }
+
+    const prevUpdatedAt = chat.updatedAt?.toMillis?.() ?? 0;
+    const nextUpdatedAt = nextChat.updatedAt?.toMillis?.() ?? 0;
+
+    return (
+      chat.lastMessage === nextChat.lastMessage &&
+      prevUpdatedAt === nextUpdatedAt
+    );
+  });
+};
+
+const mergeChatsPreservingOrder = (prevChats, nextChats) => {
+  if (!prevChats.length) {
+    return nextChats;
+  }
+
+  if (areChatsEqual(prevChats, nextChats)) {
+    return prevChats;
+  }
+
+  const prevOrder = prevChats.map((chat) => chat.id);
+  const nextOrder = nextChats.map((chat) => chat.id);
+
+  const sameOrder =
+    prevOrder.length === nextOrder.length &&
+    prevOrder.every((chatId, index) => chatId === nextOrder[index]);
+
+  if (sameOrder) {
+    return prevChats.map((chat) => {
+      const nextChat = nextChats.find((item) => item.id === chat.id);
+
+      if (!nextChat) {
+        return chat;
+      }
+
+      const prevUpdatedAt = chat.updatedAt?.toMillis?.() ?? 0;
+      const nextUpdatedAt = nextChat.updatedAt?.toMillis?.() ?? 0;
+
+      if (
+        chat.lastMessage === nextChat.lastMessage &&
+        prevUpdatedAt === nextUpdatedAt
+      ) {
+        return chat;
+      }
+
+      return {
+        ...chat,
+        ...nextChat,
+      };
+    });
+  }
+
+  return nextChats;
+};
+
+export const ChatSidebar = ({ onSelectUser, selectedUser }) => {
   const { user } = useAuth();
 
   const [users, setUsers] = useState([]);
@@ -59,22 +122,29 @@ export const ChatSidebar = ({
 
     setLoadingChats(true);
 
-    const unsubscribe = subscribeToUserChats(
-      user.uid,
-      (data) => {
-        setChats(data);
-        setLoadingChats(false);
-      },
-    );
+    const unsubscribe = subscribeToUserChats(user.uid, (data) => {
+      setChats((prevChats) => {
+        return mergeChatsPreservingOrder(prevChats, data);
+      });
+
+      setLoadingChats(false);
+    });
 
     return unsubscribe;
   }, [user?.uid]);
 
   /*
    * Convert chats into conversation users
+   *
+   * Empty chats are excluded.
    */
   const conversations = useMemo(() => {
     return chats
+      .filter((chat) => {
+        const messageText = (chat.lastMessage || "").trim();
+
+        return messageText.length > 0;
+      })
       .map((chat) => {
         const otherUserId = chat.participants?.find(
           (participantId) => participantId !== user?.uid,
@@ -97,6 +167,19 @@ export const ChatSidebar = ({
   }, [chats, users, user?.uid]);
 
   /*
+   * Select user
+   */
+  const handleSelectUser = useCallback(
+    (userItem) => {
+      onSelectUser(userItem);
+
+      setShowNewUsers(false);
+      setSearch("");
+    },
+    [onSelectUser],
+  );
+
+  /*
    * Search users for New conversation
    */
   const filteredUsers = useMemo(() => {
@@ -115,14 +198,46 @@ export const ChatSidebar = ({
   }, [users, search]);
 
   /*
-   * Select user
+   * Search existing conversations
    */
-  const handleSelectUser = (userItem) => {
-    onSelectUser(userItem);
+  const filteredConversations = useMemo(() => {
+    const searchValue = search.trim().toLowerCase();
 
-    setShowNewUsers(false);
-    setSearch("");
-  };
+    if (!searchValue) {
+      return conversations;
+    }
+
+    return conversations.filter(({ user: conversationUser, chat }) => {
+      return (
+        conversationUser.name?.toLowerCase().includes(searchValue) ||
+        conversationUser.email?.toLowerCase().includes(searchValue) ||
+        chat.lastMessage?.toLowerCase().includes(searchValue)
+      );
+    });
+  }, [conversations, search]);
+
+  /*
+   * Stable click handlers for users
+   */
+  const filteredUserHandlers = useMemo(() => {
+    return filteredUsers.reduce((acc, userItem) => {
+      acc[userItem.uid] = () => handleSelectUser(userItem);
+
+      return acc;
+    }, {});
+  }, [filteredUsers, handleSelectUser]);
+
+  /*
+   * Stable click handlers for conversations
+   */
+  const conversationHandlers = useMemo(() => {
+    return conversations.reduce((acc, { user: conversationUser }) => {
+      acc[conversationUser.uid] = () =>
+        handleSelectUser(conversationUser);
+
+      return acc;
+    }, {});
+  }, [conversations, handleSelectUser]);
 
   /*
    * Toggle New users
@@ -152,7 +267,7 @@ export const ChatSidebar = ({
           <button
             type="button"
             onClick={handleNewClick}
-            className="shrink-0 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-500"
+            className="shrink-0 cursor-pointer rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-500"
           >
             {showNewUsers ? "Back" : "New"}
           </button>
@@ -178,30 +293,29 @@ export const ChatSidebar = ({
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {showNewUsers ? (
           <>
+            {/* New users loading */}
             {loadingUsers ? (
               <div className="flex h-32 items-center justify-center">
                 <div className="h-7 w-7 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500" />
               </div>
             ) : filteredUsers.length === 0 ? (
+              /* No users found */
               <div className="flex min-h-32 items-center justify-center px-4 text-center">
                 <p className="text-sm text-slate-500">
                   No users found.
                 </p>
               </div>
             ) : (
+              /* Users */
               <div className="space-y-1">
                 {filteredUsers.map((userItem) => (
                   <ChatSidebarItem
                     key={userItem.uid}
-                    chat={{
-                      name: userItem.name,
-                      lastMessage: userItem.email,
-                      time: "",
-                    }}
-                    onClick={() => handleSelectUser(userItem)}
-                    isActive={
-                      selectedUser?.uid === userItem.uid
-                    }
+                    name={userItem.name}
+                    lastMessage={userItem.email}
+                    time=""
+                    onClick={filteredUserHandlers[userItem.uid]}
+                    isActive={false}
                   />
                 ))}
               </div>
@@ -209,39 +323,44 @@ export const ChatSidebar = ({
           </>
         ) : (
           <>
+            {/* Conversations loading */}
             {loadingChats || loadingUsers ? (
               <div className="flex h-32 items-center justify-center">
                 <div className="h-7 w-7 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500" />
               </div>
-            ) : conversations.length === 0 ? (
+            ) : filteredConversations.length === 0 ? (
+              /* Empty / no search results */
               <div className="flex min-h-40 flex-col items-center justify-center px-4 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-xl shadow-sm">
                   💬
                 </div>
 
                 <p className="mt-3 text-sm font-medium text-slate-600">
-                  No conversations yet
+                  {search.trim()
+                    ? "No conversations found"
+                    : "No conversations yet"}
                 </p>
 
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  Click New to start chatting with someone.
+                  {search.trim()
+                    ? "Try a different name or message."
+                    : "Click New to start chatting with someone."}
                 </p>
               </div>
             ) : (
+              /* Conversations */
               <div className="space-y-1">
-                {conversations.map(
+                {filteredConversations.map(
                   ({ user: conversationUser, chat }) => (
                     <ChatSidebarItem
                       key={chat.id}
-                      chat={{
-                        name: conversationUser.name,
-                        lastMessage:
-                          chat.lastMessage ||
-                          "No messages yet",
-                        time: "",
-                      }}
-                      onClick={() =>
-                        handleSelectUser(conversationUser)
+                      name={conversationUser.name}
+                      lastMessage={
+                        chat.lastMessage || "No messages yet"
+                      }
+                      time=""
+                      onClick={
+                        conversationHandlers[conversationUser.uid]
                       }
                       isActive={
                         selectedUser?.uid ===

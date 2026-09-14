@@ -94,11 +94,16 @@ export const Login = () => {
     try {
       setLoading(true);
 
-      await loginUser(formData);
+const loggedInUser = await loginUser(formData);
 
-      toast.success("Login successful!");
+if (!loggedInUser.emailVerified) {
+  toast.error("Please verify your email first.");
+  navigate("/verify-email");
+  return;
+}
 
-      navigate("/");
+toast.success("Login successful!");
+navigate("/");
     } catch (error) {
       console.error(error);
 

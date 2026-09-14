@@ -5,7 +5,7 @@ export const BottomBar = () => {
     <footer className="flex h-14 shrink-0 items-center justify-between border-t border-slate-200 bg-white/80 px-4 sm:px-6">
       {/* Left */}
       <p className="truncate text-xs font-medium text-slate-500 sm:text-sm">
-        Chat App
+        TalkSpace &copy; 2026. All rights reserved.
       </p>
 
       {/* Right */}
